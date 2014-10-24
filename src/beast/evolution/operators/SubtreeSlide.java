@@ -94,10 +94,11 @@ public class SubtreeSlide extends TreeOperator {
         double logq;
 
         Node i;
-
+        final boolean  markClades = markCladesInput.get();
         // 1. choose a random node avoiding root
+        final int nNodes = tree.getNodeCount();
         do {
-            i = tree.getNode(Randomizer.nextInt(tree.getNodeCount()));
+            i = tree.getNode(Randomizer.nextInt(nNodes));
         } while (i.isRoot());
 
         final Node iP = i.getParent();
@@ -119,10 +120,12 @@ public class SubtreeSlide extends TreeOperator {
                 Node newChild = iP;
                 while (newParent.getHeight() < newHeight) {
                     newChild = newParent;
+                    if( markClades ) newParent.makeDirty(Tree.IS_FILTHY); // JH
                     newParent = newParent.getParent();
                     if (newParent == null) break;
                 }
-
+                // the moved node 'iP' would become a child of 'newParent'
+                //
 
                 // 3.1.1 if creating a new root
                 if (newChild.isRoot()) {
@@ -131,7 +134,6 @@ public class SubtreeSlide extends TreeOperator {
 
                     iP.setParent(null);
                     tree.setRoot(iP);
-
                 }
                 // 3.1.2 no new root
                 else {
@@ -178,7 +180,6 @@ public class SubtreeSlide extends TreeOperator {
                 final Node newChild = newChildren.get(childIndex);
                 final Node newParent = newChild.getParent();
 
-
                 // 4.1.1 if iP was root
                 if (iP.isRoot()) {
                     // new root is CiP
@@ -195,6 +196,14 @@ public class SubtreeSlide extends TreeOperator {
                 }
 
                 iP.setHeight(newHeight);
+                if( markClades ) {
+                    // make dirty the path from the (down) moved node back up to former parent.
+                    Node n = iP;
+                    while( n != CiP ) {
+                        n.makeDirty(Tree.IS_FILTHY); // JH
+                        n = n.getParent();
+                    }
+                }
 
                 logq = Math.log(possibleDestinations);
             } else {

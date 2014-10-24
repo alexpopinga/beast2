@@ -360,7 +360,7 @@ public class Logger extends BEASTObject {
                         }
                     }
                     m_out = new PrintStream(fileName);
-                    System.out.println("Writing file " + fileName);
+                    Log.info.println("Writing file " + fileName);
                     return true;
                 }
                 case overwrite:// (over)write log file
@@ -370,7 +370,7 @@ public class Logger extends BEASTObject {
                         sMsg = "Warning: Overwriting";
                     }
                     m_out = new PrintStream(fileName);
-                    System.out.println(sMsg + " file " + fileName);
+                    Log.warning.println(sMsg + " file " + fileName);
                     return true;
                 }
                 case resume:// append log file, pick up SampleOffset by reading existing log
@@ -439,11 +439,11 @@ public class Logger extends BEASTObject {
                             // it is safe to remove the backup file now
                             new File(fileName + ".bu").delete();
                         }
-                        System.out.println("Appending file " + fileName);
+                        Log.info.println("Appending file " + fileName);
                         return false;
                     } else {
                         m_out = new PrintStream(fileName);
-                        System.out.println("Writing file " + fileName);
+                        Log.info.println("Writing file " + fileName);
                         return true;
                     }
                 }
@@ -528,7 +528,7 @@ public class Logger extends BEASTObject {
 
     private String prettifyLogEntry(String sStr) {
         // TODO Q2R intelliJ says \\ can't be used in a range ...
-        if ("[\\d-E]+\\.[\\d-E]+".matches(sStr)) {
+        if (sStr.matches("[\\d-E]+\\.[\\d-E]+")) {
             // format as double
             if (sStr.contains("E")) {
                 if (sStr.length() > 15) {

@@ -35,8 +35,8 @@ import java.util.Random;
 import beast.core.Description;
 import beast.core.Input;
 import beast.core.State;
+import beast.core.util.Log;
 import beast.evolution.alignment.Alignment;
-import beast.evolution.alignment.AscertainedAlignment;
 import beast.evolution.branchratemodel.BranchRateModel;
 import beast.evolution.branchratemodel.StrictClockModel;
 import beast.evolution.sitemodel.SiteModel;
@@ -172,9 +172,9 @@ public class TreeLikelihood extends GenericTreeLikelihood {
 
         Alignment alignment = dataInput.get();
 
-        System.out.println(className + "(" + getID() + ") uses " + likelihoodCore.getClass().getSimpleName());
-        System.out.println("  " + alignment.toString(true));
-
+        Log.info.println(className + "(" + getID() + ") uses " + likelihoodCore.getClass().getSimpleName());
+        Log.info.println("  " + alignment.toString(true));
+        // print startup messages via Log.print*
 
         proportionInvariant = m_siteModel.getProportionInvariant();
         m_siteModel.setPropInvariantIsCategory(false);
@@ -190,7 +190,7 @@ public class TreeLikelihood extends GenericTreeLikelihood {
         probabilities = new double[(nStateCount + 1) * (nStateCount + 1)];
         Arrays.fill(probabilities, 1.0);
 
-        if (dataInput.get() instanceof AscertainedAlignment) {
+        if (dataInput.get().isAscertained) {
             useAscertainedSitePatterns = true;
         }
     }
@@ -367,7 +367,7 @@ public class TreeLikelihood extends GenericTreeLikelihood {
     void calcLogP() throws Exception {
         logP = 0.0;
         if (useAscertainedSitePatterns) {
-            final double ascertainmentCorrection = ((AscertainedAlignment) dataInput.get()).getAscertainmentCorrection(patternLogLikelihoods);
+            final double ascertainmentCorrection = dataInput.get().getAscertainmentCorrection(patternLogLikelihoods);
             for (int i = 0; i < dataInput.get().getPatternCount(); i++) {
                 logP += (patternLogLikelihoods[i] - ascertainmentCorrection) * dataInput.get().getPatternWeight(i);
             }

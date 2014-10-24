@@ -24,18 +24,6 @@
 */
 package beast.util;
 
-
-//import beast.core.parameter.IntegerParameter;
-//import beast.core.parameter.BooleanParameter;
-
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-
 import beast.app.beauti.PartitionContext;
 import beast.core.*;
 import beast.core.Input.Validate;
@@ -46,17 +34,17 @@ import beast.core.util.Log;
 import beast.evolution.alignment.Alignment;
 import beast.evolution.alignment.Sequence;
 import beast.evolution.tree.Tree;
-
+import org.w3c.dom.*;
+import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.io.PrintStream;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
+import static beast.util.XMLParserUtils.processPlates;
+import static beast.util.XMLParserUtils.replaceVariable;
 
 
 /**
@@ -154,19 +142,19 @@ public class XMLParser {
     /* This is the set of keywords in XML.
 * This list should not be added to unless there
 * is a very very good reason. */
-    final static String BEAST_ELEMENT = "beast";
-    final static String MAP_ELEMENT = "map";
-    final static String DISTRIBUTION_ELEMENT = "distribution";
-    final static String OPERATOR_ELEMENT = "operator";
-    final static String INPUT_ELEMENT = "input";
-    final static String LOG_ELEMENT = "logger";
-    final static String DATA_ELEMENT = "data";
-    final static String SEQUENCE_ELEMENT = "sequence";
-    final static String STATE_ELEMENT = "state";
-    final static String TREE_ELEMENT = "tree";
-    final static String REAL_PARAMETER_ELEMENT = "parameter";
-    final static String RUN_ELEMENT = "run";
-    final static String PLATE_ELEMENT = "plate";
+    public final static String BEAST_ELEMENT = "beast";
+    public final static String MAP_ELEMENT = "map";
+    public final static String DISTRIBUTION_ELEMENT = "distribution";
+    public final static String OPERATOR_ELEMENT = "operator";
+    public final static String INPUT_ELEMENT = "input";
+    public final static String LOG_ELEMENT = "logger";
+    public final static String DATA_ELEMENT = "data";
+    public final static String SEQUENCE_ELEMENT = "sequence";
+    public final static String STATE_ELEMENT = "state";
+    public final static String TREE_ELEMENT = "tree";
+    public final static String REAL_PARAMETER_ELEMENT = "parameter";
+    public final static String RUN_ELEMENT = "run";
+    public final static String PLATE_ELEMENT = "plate";
 
     Runnable m_runnable;
     State m_state;
@@ -237,15 +225,15 @@ public class XMLParser {
         //factory.setValidating(true);
         doc = factory.newDocumentBuilder().parse(file);
         doc.normalize();
-        processPlates();
+        processPlates(doc,PLATE_ELEMENT);
 
         // Substitute occurrences of "$(filebase)" with name of file 
         int pointIdx = file.getName().lastIndexOf('.');
         String baseName = pointIdx<0 ? file.getName() : file.getName().substring(0, pointIdx);
-        replace(doc.getElementsByTagName(BEAST_ELEMENT).item(0), "filebase", baseName);
+        replaceVariable(doc.getElementsByTagName(BEAST_ELEMENT).item(0), "filebase", baseName);
 
         // Substitute occurrences of "$(seed)" with RNG seed
-        replace(doc.getElementsByTagName(BEAST_ELEMENT).item(0), "seed",
+        replaceVariable(doc.getElementsByTagName(BEAST_ELEMENT).item(0), "seed",
                 String.valueOf(Randomizer.getSeed()));
         
         IDMap = new HashMap<String, BEASTInterface>();
@@ -274,7 +262,7 @@ public class XMLParser {
         //factory.setValidating(true);
         doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(sXML)));
         doc.normalize();
-        processPlates();
+        processPlates(doc,PLATE_ELEMENT);
 
         IDMap = sIDMap;//new HashMap<String, Plugin>();
         likelihoodMap = new HashMap<String, Integer[]>();
@@ -334,58 +322,6 @@ public class XMLParser {
         }
 	}
 
-	/**
-     * Expand plates in XML by duplicating the containing XML and replacing
-     * the plate variable with the appropriate value.
-     */
-    void processPlates() {
-        // process plate elements
-        final NodeList nodes = doc.getElementsByTagName(PLATE_ELEMENT);
-        // instead of processing all plates, process them one by one,
-        // then check recursively for new plates that could have been
-        // created when they are nested
-        if (nodes.getLength() > 0) {
-            final Node node = nodes.item(0);
-            final String sVar = node.getAttributes().getNamedItem("var").getNodeValue();
-            final String sRange = node.getAttributes().getNamedItem("range").getNodeValue();
-            final String[] sValues = sRange.split(",");
-            for (final String sValue : sValues) {
-                // copy children
-                final NodeList children = node.getChildNodes();
-                for (int iChild = 0; iChild < children.getLength(); iChild++) {
-                    final Node child = children.item(iChild);
-                    final Node newChild = child.cloneNode(true);
-                    replace(newChild, sVar, sValue);
-                    node.getParentNode().insertBefore(newChild, node);
-                }
-            }
-            node.getParentNode().removeChild(node);
-            processPlates();
-        }
-    } // processPlates
-
-    void replace(final Node node, final String sVar, final String sValue) {
-        if (node.getNodeType() == Node.ELEMENT_NODE) {
-            final Element element = (Element) node;
-            final NamedNodeMap atts = element.getAttributes();
-            for (int i = 0; i < atts.getLength(); i++) {
-                final Attr attr = (Attr) atts.item(i);
-                if (attr.getValue().contains("$(" + sVar + ")")) {
-                    String sAtt = attr.getValue();
-                    sAtt = sAtt.replaceAll("\\$\\(" + sVar + "\\)", sValue);
-                    attr.setNodeValue(sAtt);
-                }
-            }
-        }
-
-        // process children
-        final NodeList children = node.getChildNodes();
-        for (int iChild = 0; iChild < children.getLength(); iChild++) {
-            final Node child = children.item(iChild);
-            replace(child, sVar, sValue);
-        }
-    } // replace
-
     /**
      * Parse an XML fragment representing a Plug-in
      * Only the run element or if that does not exist the last child element of
@@ -397,7 +333,7 @@ public class XMLParser {
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(sXML)));
         doc.normalize();
-        processPlates();
+        processPlates(doc,PLATE_ELEMENT);
 
         IDMap = new HashMap<String, BEASTInterface>();
         likelihoodMap = new HashMap<String, Integer[]>();
@@ -459,7 +395,7 @@ public class XMLParser {
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(sXML)));
         doc.normalize();
-        processPlates();
+        processPlates(doc,PLATE_ELEMENT);
 
         // find top level beast element
         final NodeList nodes = doc.getElementsByTagName("*");
@@ -576,7 +512,7 @@ public class XMLParser {
 	                    // sanity check: class should exist
 	                    if (!bDone && Class.forName(sNameSpace + sClass) != null) {
 	                        element2ClassMap.put(sName, sClass);
-	                        System.err.println(sName + " => " + sNameSpace + sClass);
+	                        Log.info.println(sName + " => " + sNameSpace + sClass);
 	                        final String reserved = getAttribute(child, "reserved");
 	                        if (reserved != null && reserved.toLowerCase().equals("true")) {
 	                        	reservedElements.add(sName);
@@ -1086,4 +1022,4 @@ public class XMLParser {
     }
 
 
-} // classXMLParser
+} // class XMLParser

@@ -1,11 +1,6 @@
 package beast.core;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.PrintStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
@@ -28,7 +23,10 @@ public class OperatorSchedule extends BEASTObject {
                     + Arrays.toString(OptimisationTransform.values()) + " (default 'none')",
             OptimisationTransform.none, OptimisationTransform.values());
     public Input<Boolean> autoOptimiseInput = new Input<Boolean>("autoOptimize", "whether to automatically optimise operator settings", true);
-    public Input<Integer> autoOptimizeDelayInput = new Input<Integer>("autoOptimizeDelay", "number of samples to skip before auto optimisation kicks in", 10000);
+
+    public Input<Boolean> detailedRejectionInput = new Input<Boolean>("detailedRejection", "true if detailed rejection statistics should be included. (default=false)", false);
+
+    public Input<Integer> autoOptimizeDelayInput = new Input<Integer>("autoOptimizeDelay", "number of samples to skip before auto optimisation kicks in (default=10000)", 10000);
 
     /**
      * list of operators in the schedule *
@@ -40,11 +38,6 @@ public class OperatorSchedule extends BEASTObject {
      * sum of weight of operators *
      */
     double totalWeight = 0;
-
-    /**
-     * the relative weights add to unity *
-     */
-    double[] relativeOperatorWeigths;
 
     /**
      * cumulative weights, with unity as max value *
@@ -64,12 +57,14 @@ public class OperatorSchedule extends BEASTObject {
     protected int autoOptimizeDelayCount = 0;
     OptimisationTransform transform = OptimisationTransform.none;
     boolean autoOptimise = true;
+    boolean detailedRejection = false;
 
     @Override
     public void initAndValidate() throws Exception {
         transform = transformInput.get();
         autoOptimise = autoOptimiseInput.get();
         autoOptimizeDelay = autoOptimizeDelayInput.get();
+        detailedRejection = detailedRejectionInput.get();
     }
 
     public void setStateFileName(final String name) {
@@ -101,6 +96,12 @@ public class OperatorSchedule extends BEASTObject {
         return operators.get(iOperator);
     }
 
+    private static final String TUNING = "Tuning";
+    private static final String NUM_ACCEPT = "#accept";
+    private static final String NUM_REJECT = "#reject";
+    private static final String PR_M = "Pr(m)";
+    private static final String PR_ACCEPT = "Pr(acc|m)";
+
     /**
      * report operator statistics *
      * @param out
@@ -108,11 +109,85 @@ public class OperatorSchedule extends BEASTObject {
     public void showOperatorRates(final PrintStream out) {
 
         Formatter formatter = new Formatter(out);
-        formatter.format("%-60s %6s %9s %9s %9s %9s\n","Operator","Tuning","#accept","#reject","total","prob.acc");
 
+        int longestName = 0;
         for (final Operator operator : operators) {
-            out.println(operator);
+            if (operator.getName().length() > longestName) {
+                longestName = operator.getName().length();
+            }
         }
+
+        formatter.format("%-" + longestName + "s", "Operator");
+
+        int colWidth = 10;
+        String headerFormat = " %" + colWidth + "s";
+
+        formatter.format(headerFormat, TUNING);
+        formatter.format(headerFormat, NUM_ACCEPT);
+        formatter.format(headerFormat, NUM_REJECT);
+        if (detailedRejection) {
+            formatter.format(headerFormat, "rej.inv");
+            formatter.format(headerFormat, "rej.op");
+        }
+        formatter.format(headerFormat, PR_M);
+        formatter.format(headerFormat, PR_ACCEPT);
+        out.println();
+        for (final Operator operator : operators) {
+            out.println(prettyPrintOperator(operator, longestName, colWidth, 4, totalWeight, detailedRejection));
+        }
+        out.println();
+
+        formatter.format(headerFormat,TUNING);
+        out.println(": The value of the operator's tuning parameter, or '-' if the operator can't be optimized.");
+        formatter.format(headerFormat, NUM_ACCEPT);
+        out.println(": The total number of times a proposal by this operator has been accepted.");
+        formatter.format(headerFormat, NUM_REJECT);
+        out.println(": The total number of times a proposal by this operator has been rejected.");
+        formatter.format(headerFormat, PR_M);
+        out.println(": The probability this operator is chosen in a step of the MCMC (i.e. the normalized weight).");
+        formatter.format(headerFormat, PR_ACCEPT);
+        out.println(": The acceptance probability (" + NUM_ACCEPT + " as a fraction of the total proposals for this operator).");
+        out.println();
+    }
+
+    protected static String prettyPrintOperator(
+            Operator op,
+            int nameColWidth,
+            int colWidth,
+            int dp,
+            double totalWeight,
+            boolean detailedRejection) {
+
+        double tuning = op.getCoercableParameterValue();
+        double accRate = (double) op.m_nNrAccepted / (double) (op.m_nNrAccepted + op.m_nNrRejected);
+
+        StringBuilder sb = new StringBuilder();
+        Formatter formatter = new Formatter(sb);
+
+        String intFormat = " %" + colWidth + "d";
+        String doubleFormat = " %" + colWidth + "." + dp + "f";
+
+        formatter.format("%-" + nameColWidth + "s", op.getName());
+        if (!Double.isNaN(tuning)) {
+            formatter.format(doubleFormat, tuning);
+        } else {
+            formatter.format(" %" + colWidth + "s", "-");
+        }
+
+        formatter.format(intFormat, op.m_nNrAccepted);
+        formatter.format(intFormat, op.m_nNrRejected);
+        if (detailedRejection) {
+            formatter.format(doubleFormat, (double) op.m_nNrRejectedInvalid / (double) op.m_nNrRejected);
+            formatter.format(doubleFormat, (double) op.m_nNrRejectedOperator / (double) op.m_nNrRejected);
+        }
+        if (totalWeight > 0.0) {
+            formatter.format(doubleFormat, op.getWeight() / totalWeight);
+        }
+        formatter.format(doubleFormat, accRate);
+
+        sb.append(" " + op.getPerformanceSuggestion());
+
+        return sb.toString();
     }
 
     /**
@@ -122,10 +197,10 @@ public class OperatorSchedule extends BEASTObject {
     public void storeToFile() throws Exception {
         // appends state of operator set to state file
         File aFile = new File(stateFileName);
-        PrintStream out = new PrintStream(new BufferedOutputStream(new FileOutputStream(aFile, true)));
+        PrintWriter out = new PrintWriter(new FileWriter(aFile, true));
 
         out.println("<!--");
-        out.println("{operators:[");
+        out.println("{\"operators\":[");
         int k = 0;
         for (Operator operator: operators) {
             operator.storeToFile(out);
@@ -135,6 +210,7 @@ public class OperatorSchedule extends BEASTObject {
         }
         out.println("\n]}");
         out.println("-->");
+        out.flush();
         out.close();
     }
 

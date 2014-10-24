@@ -26,6 +26,8 @@ package beast.core;
 
 
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Formatter;
@@ -35,6 +37,7 @@ import org.json.JSONObject;
 
 import beast.core.Input.Validate;
 import beast.core.util.Evaluator;
+import org.json.JSONWriter;
 
 @Description("Proposes a move in state space.")
 public abstract class Operator extends BEASTObject {
@@ -67,16 +70,16 @@ public abstract class Operator extends BEASTObject {
      * The proposal is responsible for keeping the State valid,
      * and if the State becomes invalid (e.g. a parameter goes out
      * of its range) Double.NEGATIVE_INFINITY should be returned.
-     * <p/>
+     * <p>
      * If the operator is a Gibbs operator, hence the proposal should
      * always be accepted, the method should return Double.POSITIVE_INFINITY.
      *
      * @param evaluator An evaluator object that can be use to repetitively
      *                  used to evaluate the distributribution returned by getEvaluatorDistribution().
      * @return log of Hastings Ratio, or Double.NEGATIVE_INFINITY if proposal
-     *         should not be accepted (because the proposal is invalid) or
-     *         Double.POSITIVE_INFINITY if the proposal should always be accepted
-     *         (for Gibbs operators).
+     * should not be accepted (because the proposal is invalid) or
+     * Double.POSITIVE_INFINITY if the proposal should always be accepted
+     * (for Gibbs operators).
      */
     public double proposal(final Evaluator evaluator) {
         return proposal();
@@ -87,20 +90,20 @@ public abstract class Operator extends BEASTObject {
      * The proposal is responsible for keeping the State valid,
      * and if the State becomes invalid (e.g. a parameter goes out
      * of its range) Double.NEGATIVE_INFINITY should be returned.
-     * <p/>
+     * <p>
      * If the operator is a Gibbs operator, hence the proposal should
      * always be accepted, the method should return Double.POSITIVE_INFINITY.
      *
      * @return log of Hastings Ratio, or Double.NEGATIVE_INFINITY if proposal
-     *         should not be accepted (because the proposal is invalid) or
-     *         Double.POSITIVE_INFINITY if the proposal should always be accepted
-     *         (for Gibbs operators).
+     * should not be accepted (because the proposal is invalid) or
+     * Double.POSITIVE_INFINITY if the proposal should always be accepted
+     * (for Gibbs operators).
      */
     abstract public double proposal();
 
     /**
      * @return the relative weight which determines the probability this proposal is chosen
-     *         from among all the available proposals
+     * from among all the available proposals
      */
     public double getWeight() {
         return m_pWeight.get();
@@ -110,9 +113,9 @@ public abstract class Operator extends BEASTObject {
 
         String className = this.getClass().getName();
         if (className.startsWith(STANDARD_OPERATOR_PACKAGE)) {
-            className = className.substring(STANDARD_OPERATOR_PACKAGE.length()+1);
+            className = className.substring(STANDARD_OPERATOR_PACKAGE.length() + 1);
         }
-        return  className + "(" + (getID() != null ?  getID() : "") + ")";
+        return className + "(" + (getID() != null ? getID() : "") + ")";
     }
 
     /**
@@ -143,10 +146,10 @@ public abstract class Operator extends BEASTObject {
     // 0 like finite  -1 like -inf -2 operator failed
     public void reject(final int reason) {
         m_nNrRejected++;
-        if( reason < 0 ) {
+        if (reason < 0) {
             ++m_nNrRejectedInvalid;
-            if( reason == -2 ) {
-               ++m_nNrRejectedOperator;
+            if (reason == -2) {
+                ++m_nNrRejectedOperator;
             }
         }
         if (operatorSchedule.autoOptimizeDelayCount >= operatorSchedule.autoOptimizeDelay) {
@@ -189,6 +192,7 @@ public abstract class Operator extends BEASTObject {
 
     /**
      * set value that changed through automatic operator optimisation
+     *
      * @param fValue
      */
     public void setCoercableParameterValue(final double fValue) {
@@ -196,6 +200,7 @@ public abstract class Operator extends BEASTObject {
 
     /**
      * return directions on how to set operator parameters, if any *
+     *
      * @return
      */
     public String getPerformanceSuggestion() {
@@ -222,64 +227,55 @@ public abstract class Operator extends BEASTObject {
     }
 
     public String toString() {
-        String name = getName();
-        final DecimalFormat format = new DecimalFormat("#.###");
-
-        String tuning = "";
-        if (!Double.isNaN(getCoercableParameterValue())) {
-            tuning = format.format(getCoercableParameterValue());
-        }
-
-        double accRate = (double) m_nNrAccepted / (double)(m_nNrAccepted + m_nNrRejected);
-
-        StringBuilder sb = new StringBuilder();
-        Formatter formatter = new Formatter(sb);
-
-        formatter.format("%-60s %6s %9d %9d %9d %9.3f",name,tuning, m_nNrAccepted, m_nNrRejected, m_nNrAccepted + m_nNrRejected,accRate);
-
-        if (detailedRejection) {
-            formatter.format(" %8.3f %8.3f", (double) m_nNrRejectedInvalid / (double) m_nNrRejected,
-                (double) m_nNrRejectedOperator / (double) m_nNrRejected);
-        }
-
-        sb.append(" " + getPerformanceSuggestion());
-
-        return sb.toString();
+        return OperatorSchedule.prettyPrintOperator(this, 70, 10, 4, 0.0, detailedRejection);
     }
 
-    /** Store to state file, so on resume the parameter tuning is restored.
+    /**
+     * Store to state file, so on resume the parameter tuning is restored.
      * By default, it stores information in JSON for example
-     * 
-     * {id:"kappaScaler", p:0.5, accept:39, reject:35, acceptFC:0, rejectFC:0}
-     * 
+     * <p>
+     * {"id":"kappaScaler", "p":0.5, "accept":39, "reject":35, "acceptFC":0, "rejectFC":0}
+     * <p>
      * Meta-operators (operators that have one or more operators as inputs)
      * need to override this method to store the tuning information associated
      * with their sub-operators by generating nested JSON, for example
-     * 
-     * {id:"metaoperator", p:0.5, accept:396, reject:355, acceptFC:50, rejectFC:45,
-     *  operators [
-     *  {id:"kappaScaler1", p:0.5, accept:39, reject:35, acceptFC:0, rejectFC:0}
-     *  {id:"kappaScaler2", p:0.5, accept:39, reject:35, acceptFC:0, rejectFC:0}
-     *  ]
+     * <p>
+     * {"id":"metaoperator", "p":0.5, "accept":396, "reject":355, "acceptFC":50, "rejectFC":45,
+     * operators [
+     * {"id":"kappaScaler1", "p":0.5, "accept":39, "reject":35, "acceptFC":0, "rejectFC":0}
+     * {"id":"kappaScaler2", "p":0.5, "accept":39, "reject":35, "acceptFC":0, "rejectFC":0}
+     * ]
      * }
-     *  **/
-	public void storeToFile(final PrintStream out) {
-        out.print("{id:\"" + getID() + '"' +
-        		", p:" + getCoercableParameterValue() +
-        		", accept:" + m_nNrAccepted +
-        		", reject:" + m_nNrRejected +
-        		", acceptFC:" + m_nNrAcceptedForCorrection +  
-        		", rejectFC:" + m_nNrRejectedForCorrection +
-                ", rejectIv:" + m_nNrRejectedInvalid +
-                 ", rejectOp:" + m_nNrRejectedOperator +
-        		"}"
-                );
-	}
+     * *
+     */
+    public void storeToFile(final PrintWriter out) {
 
-	/** Restore tuning information from file
-	 * Override this method fo meta-operators (see also storeToFile). 
-	 */
-	public void restoreFromFile(JSONObject o) {
+        StringWriter writer = new StringWriter();
+        JSONWriter json = new JSONWriter(writer);
+        json.object();
+        json.key("id").value(getID());
+
+        double p = getCoercableParameterValue();
+        if (Double.isNaN(p)) {
+            json.key("p").value("NaN");
+        } else {
+            json.key("p").value(p);
+        }
+        json.key("accept").value(m_nNrAccepted);
+        json.key("reject").value(m_nNrRejected);
+        json.key("acceptFC").value(m_nNrAcceptedForCorrection);
+        json.key("rejectFC").value(m_nNrRejectedForCorrection);
+        json.key("rejectIv").value(m_nNrRejectedInvalid);
+        json.key("rejectOp").value(m_nNrRejectedOperator);
+        json.endObject();
+        out.print(writer.toString());
+    }
+
+    /**
+     * Restore tuning information from file
+     * Override this method fo meta-operators (see also storeToFile).
+     */
+    public void restoreFromFile(JSONObject o) {
         if (!Double.isNaN(o.getDouble("p"))) {
             setCoercableParameterValue(o.getDouble("p"));
         }
@@ -288,19 +284,20 @@ public abstract class Operator extends BEASTObject {
         m_nNrAcceptedForCorrection = o.getInt("acceptFC");
         m_nNrRejectedForCorrection = o.getInt("rejectFC");
 
-        m_nNrRejectedInvalid =  o.has("rejectIv") ?  o.getInt("rejectIv") : 0;
+        m_nNrRejectedInvalid = o.has("rejectIv") ? o.getInt("rejectIv") : 0;
         m_nNrRejectedOperator = o.has("rejectOp") ? o.getInt("rejectOp") : 0;
-	}
+    }
 
 
-	/** indicates that the state needs to be initialises so that 
-	 * BEASTObjects can be identified that need updating. This
-	 * almost always needs to happen, except for cases where the
-	 * operator already initialised the state, e.g. for delayed
-	 * acceptance operators.
-	 */
-	public boolean requiresStateInitialisation() {
-		return true;
-	}
+    /**
+     * indicates that the state needs to be initialises so that
+     * BEASTObjects can be identified that need updating. This
+     * almost always needs to happen, except for cases where the
+     * operator already initialised the state, e.g. for delayed
+     * acceptance operators.
+     */
+    public boolean requiresStateInitialisation() {
+        return true;
+    }
 
 } // class Operator

@@ -1,18 +1,17 @@
 package beast.evolution.sitemodel;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import beast.core.CalculationNode;
 import beast.core.Description;
 import beast.core.Input;
-import beast.core.StateNode;
-import beast.core.BEASTObject;
 import beast.core.Input.Validate;
+import beast.core.StateNode;
 import beast.evolution.datatype.DataType;
 import beast.evolution.likelihood.TreeLikelihood;
 import beast.evolution.substitutionmodel.SubstitutionModel;
 import beast.evolution.tree.Node;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 
@@ -34,7 +33,7 @@ public interface SiteModelInterface {
     void setDataType(DataType dataType);
 
 
-    @Description(value = "Base implementation of a site model with subtitution model and rate categories.", isInheritable = false)
+    @Description(value = "Base implementation of a site model with substitution model and rate categories.", isInheritable = false)
     public abstract class Base extends CalculationNode implements SiteModelInterface {
     	public Input<SubstitutionModel.Base> substModelInput =
                 new Input<SubstitutionModel.Base>("substModel", "substitution model along branches in the beast.tree", null, Validate.REQUIRED);
@@ -99,7 +98,7 @@ public interface SiteModelInterface {
          */
         abstract public double[] getCategoryProportions(Node node);
     
-        public boolean canSetSubstModel(Object o) throws Exception {
+        public boolean canSetSubstModel(Object o) {
             final SubstitutionModel substModel = (SubstitutionModel) o;
             if (m_dataType == null) {
             	// try to find out the data type from the data in a treelikelihood in an output
@@ -113,7 +112,8 @@ public interface SiteModelInterface {
             }
             if (m_dataType != null) {
                 if (!substModel.canHandleDataType(m_dataType)) {
-                    throw new Exception("substitution model cannot handle data type");
+                    return false;
+                    //throw new Exception("substitution model cannot handle data type");
                 }
             }
             return true;
