@@ -69,48 +69,48 @@
         <subtemplate id='TN93' class='beast.evolution.substitutionmodel.TN93' mainid='tn93.s:$(n)'>
             <![CDATA[
         <plugin spec='TN93' id='tn93.s:$(n)'>
-            <parameter id="rateAG.s:$(n)" name='kappa1' value="2.0" lower="0.0" estimate='true'/>
-            <parameter id="rateCT.s:$(n)" name='kappa2' value="2.0" lower="0.0" estimate='true'/>
+            <parameter id="kappa1.s:$(n)" name='kappa1' value="2.0" lower="0.0" estimate='true'/>
+            <parameter id="kappa2.s:$(n)" name='kappa2' value="2.0" lower="0.0" estimate='true'/>
             <frequencies id='estimatedFreqs.s:$(n)' spec='Frequencies'>
                 <frequencies id='freqParameter.s:$(n)' spec='parameter.RealParameter' dimension='4' value='0.25' lower='0' upper='1'/>
             </frequencies>
         </plugin>
 
-        <plugin id='RateAGScaler.s:$(n)' spec='ScaleOperator' scaleFactor="0.5" weight="0.1" parameter="@rateAG.s:$(n)"/>
-        <plugin id='RateCTScaler.s:$(n)' spec='ScaleOperator' scaleFactor="0.5" weight="0.1" parameter="@rateCT.s:$(n)"/>
+        <plugin id='kappa1Scaler.s:$(n)' spec='ScaleOperator' scaleFactor="0.5" weight="0.1" parameter="@kappa1.s:$(n)"/>
+        <plugin id='kappa2Scaler.s:$(n)' spec='ScaleOperator' scaleFactor="0.5" weight="0.1" parameter="@kappa2.s:$(n)"/>
         <plugin id='FrequenciesExchanger.s:$(n)' spec='DeltaExchangeOperator' delta="0.01" weight="0.1" parameter="@freqParameter.s:$(n)"/>
 
-        <prior id='RateAGPrior.s:$(n)' x='@rateAG.s:$(n)'>
+        <prior id='kappa1Prior.s:$(n)' x='@kappa1.s:$(n)'>
             <distr spec="LogNormalDistributionModel" meanInRealSpace='false'>
                 <parameter name='M' value="1.0" estimate='false'/>
                 <parameter name='S' value="1.25" estimate='false'/>
             </distr>
-		</prior>
-        <prior id='RateCTPrior.s:$(n)' x='@rateCT.s:$(n)'>
+	</prior>
+        <prior id='kappa2Prior.s:$(n)' x='@kappa2.s:$(n)'>
             <distr spec="LogNormalDistributionModel" meanInRealSpace='false'>
                 <parameter name='M' value="1.0" estimate='false'/>
                 <parameter name='S' value="1.25" estimate='false'/>
             </distr>
-		</prior>
+	</prior>
 <!--
         <prior id='FrequenciesPrior.s:$(n)' x='@freqParameter.s:$(n)'><distr spec="beast.math.distributions.Uniform" lower='0' upper='1'/></prior>
 -->
 
 ]]>
 
-            <connect srcID='rateAG.s:$(n)' targetID='state' inputName='stateNode'
-                     if='inlikelihood(rateAG.s:$(n)) and rateAG.s:$(n)/estimate=true'/>
-            <connect srcID='rateCT.s:$(n)' targetID='state' inputName='stateNode'
-                     if='inlikelihood(rateCT.s:$(n)) and rateCT.s:$(n)/estimate=true'/>
+            <connect srcID='kappa1.s:$(n)' targetID='state' inputName='stateNode'
+                     if='inlikelihood(kappa1.s:$(n)) and kappa1.s:$(n)/estimate=true'/>
+            <connect srcID='kappa2.s:$(n)' targetID='state' inputName='stateNode'
+                     if='inlikelihood(kappa2.s:$(n)) and kappa2.s:$(n)/estimate=true'/>
             <connect srcID='freqParameter.s:$(n)' targetID='state' inputName='stateNode'
                      if='inlikelihood(hky.$(n)) and inlikelihood(freqParameter.s:$(n)) and freqParameter.s:$(n)/estimate=true'/>
 
-            <connect srcID='RateAGScaler.s:$(n)' targetID='mcmc' inputName='operator'
-                     if='inlikelihood(rateAG.s:$(n)) and rateAG.s:$(n)/estimate=true'>Scale TN93 rateAG (kappa1)
+            <connect srcID='kappa1Scaler.s:$(n)' targetID='mcmc' inputName='operator'
+                     if='inlikelihood(kappa1.s:$(n)) and kappa1.s:$(n)/estimate=true'>Scale TN93 kappa1 (rateAG)
                 parameter of partition s:$(n)
             </connect>
-            <connect srcID='RateCTScaler.s:$(n)' targetID='mcmc' inputName='operator'
-                     if='inlikelihood(rateCT.s:$(n)) and rateCT.s:$(n)/estimate=true'>Scale TN93 rateCT (kappa2)
+            <connect srcID='kappa2Scaler.s:$(n)' targetID='mcmc' inputName='operator'
+                     if='inlikelihood(kappa2.s:$(n)) and kappa2.s:$(n)/estimate=true'>Scale TN93 kappa2 (rateCT)
                 parameter of partition s:$(n)
             </connect>
             <connect srcID='FrequenciesExchanger.s:$(n)' targetID='mcmc' inputName='operator'
@@ -118,19 +118,19 @@
                 Exchange values of frequencies of partition s:$(n)
             </connect>
 
-            <connect srcID='rateAG.s:$(n)' targetID='tracelog' inputName='log'
-                     if='inlikelihood(rateAG.s:$(n)) and rateAG.s:$(n)/estimate=true'/>
-            <connect srcID='rateCT.s:$(n)' targetID='tracelog' inputName='log'
-                     if='inlikelihood(rateCT.s:$(n)) and rateCT.s:$(n)/estimate=true'/>
+            <connect srcID='kappa1.s:$(n)' targetID='tracelog' inputName='log'
+                     if='inlikelihood(kappa1.s:$(n)) and kappa1.s:$(n)/estimate=true'/>
+            <connect srcID='kappa2.s:$(n)' targetID='tracelog' inputName='log'
+                     if='inlikelihood(kappa2.s:$(n)) and kappa2.s:$(n)/estimate=true'/>
             <connect srcID='freqParameter.s:$(n)' targetID='tracelog' inputName='log'
                      if='inlikelihood(hky.$(n)) and inlikelihood(freqParameter.s:$(n)) and freqParameter.s:$(n)/estimate=true'/>
 
-            <connect srcID='RateAGPrior.s:$(n)' targetID='prior' inputName='distribution'
-                     if='inlikelihood(rateAG.s:$(n)) and kappa.s:$(n)/estimate=true'>TN93 rateAG (kappa1) parameter of
+            <connect srcID='kappa1Prior.s:$(n)' targetID='prior' inputName='distribution'
+                     if='inlikelihood(kappa1.s:$(n)) and kappa1.s:$(n)/estimate=true'>TN93 kappa1 (rateAG) parameter of
                 partition s:$(n)
             </connect>
-            <connect srcID='RateCTPrior.s:$(n)' targetID='prior' inputName='distribution'
-                     if='inlikelihood(rateCT.s:$(n)) and kappa.s:$(n)/estimate=true'>TN93 rateCT (kappa2) parameter of
+            <connect srcID='kappa2Prior.s:$(n)' targetID='prior' inputName='distribution'
+                     if='inlikelihood(kappa2.s:$(n)) and kappa2.s:$(n)/estimate=true'>TN93 kappa2 (rateCT) parameter of
                 partition s:$(n)
             </connect>
             <!--
@@ -163,12 +163,12 @@
         <operator id='RateGTScaler.s:$(n)' spec='ScaleOperator' scaleFactor="0.5" weight="0.1" parameter="@rateGT.s:$(n)"/>
         <operator id='FrequenciesExchanger.s:$(n)' spec='DeltaExchangeOperator' delta="0.01" weight="0.1" parameter="@freqParameter.s:$(n)"/>
 
-        <prior id='RateACPrior.s:$(n)' x='@rateAC.s:$(n)'><distr spec="beast.math.distributions.Gamma" alpha='0.05' beta='10.0'/></prior>
-        <prior id='RateAGPrior.s:$(n)' x='@rateAG.s:$(n)'><distr spec="beast.math.distributions.Gamma" alpha='0.05' beta='20.0'/></prior>
-        <prior id='RateATPrior.s:$(n)' x='@rateAT.s:$(n)'><distr spec="beast.math.distributions.Gamma" alpha='0.05' beta='10.0'/></prior>
-        <prior id='RateCGPrior.s:$(n)' x='@rateCG.s:$(n)'><distr spec="beast.math.distributions.Gamma" alpha='0.05' beta='10.0'/></prior>
-        <prior id='RateCTPrior.s:$(n)' x='@rateCT.s:$(n)'><distr spec="beast.math.distributions.Gamma" alpha='0.05' beta='20.0'/></prior>
-        <prior id='RateGTPrior.s:$(n)' x='@rateGT.s:$(n)'><distr spec="beast.math.distributions.Gamma" alpha='0.05' beta='10.0'/></prior>
+        <prior id='RateACPrior.s:$(n)' x='@rateAC.s:$(n)'><distr spec="beast.math.distributions.Gamma"><parameter name="alpha" value='0.05' estimate='false'/><parameter name="beta" value='10.0' estimate='false'/></distr></prior>
+        <prior id='RateAGPrior.s:$(n)' x='@rateAG.s:$(n)'><distr spec="beast.math.distributions.Gamma"><parameter name="alpha" value='0.05' estimate="false"/><parameter name="beta" value='20.0' estimate="false"/></distr></prior>
+        <prior id='RateATPrior.s:$(n)' x='@rateAT.s:$(n)'><distr spec="beast.math.distributions.Gamma"><parameter name="alpha" value='0.05' estimate="false"/><parameter name="beta" value='10.0' estimate="false"/></distr></prior>
+        <prior id='RateCGPrior.s:$(n)' x='@rateCG.s:$(n)'><distr spec="beast.math.distributions.Gamma"><parameter name="alpha" value='0.05' estimate="false"/><parameter name="beta" value='10.0' estimate="false"/></distr></prior>
+        <prior id='RateCTPrior.s:$(n)' x='@rateCT.s:$(n)'><distr spec="beast.math.distributions.Gamma"><parameter name="alpha" value='0.05' estimate="false"/><parameter name="beta" value='20.0' estimate="false"/></distr></prior>
+        <prior id='RateGTPrior.s:$(n)' x='@rateGT.s:$(n)'><distr spec="beast.math.distributions.Gamma"><parameter name="alpha" value='0.05' estimate="false"/><parameter name="beta" value='10.0' estimate="false"/></distr></prior>
 ]]>
 
             <connect srcID='freqParameter.s:$(n)' targetID='state' inputName='stateNode'
@@ -708,9 +708,9 @@
             <connect srcID='BirthDeath.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(BirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
             <connect srcID='birthRate2.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(BirthDeath.t:$(n)) and inposterior(birthRate2.t:$(n)) and birthRate2/estimate=true'/>
+                     if='inposterior(BirthDeath.t:$(n)) and inposterior(birthRate2.t:$(n)) and birthRate2.t:$(n)/estimate=true'/>
             <connect srcID='relativeDeathRate2.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(BirthDeath.t:$(n)) and inposterior(relativeDeathRate2.t:$(n)) and relativeDeathRate22.t:$(n)/estimate=true'/>
+                     if='inposterior(BirthDeath.t:$(n)) and inposterior(relativeDeathRate2.t:$(n)) and relativeDeathRate2.t:$(n)/estimate=true'/>
 
 			<connect srcID='birthRate2.t:Species' targetID='SBI' inputName='birthRate' if='inposterior(BirthDeath.t:Species) and inposterior(birthRate2.t:Species)'/>
         </subtemplate>
@@ -770,7 +770,7 @@
 	        <operator id="GrowthRateRandomWalk.t:$(n)" spec="RealRandomWalkOperator" windowSize='1' weight="3" parameter="@growthRate.t:$(n)"/>
 
 	        <prior id='ePopSizePrior.t:$(n)' x='@ePopSize.t:$(n)'><distr spec="OneOnX"/></prior>
-	        <prior id='GrowthRatePrior.t:$(n)' x='@growthRate.t:$(n)'><distr spec="LaplaceDistribution" mu='0.001' scale='30.701135'/></prior>
+	        <prior id='GrowthRatePrior.t:$(n)' x='@growthRate.t:$(n)'><distr spec="LaplaceDistribution"><parameter name="mu" value='0.001' estimate="false"/><parameter name="scale" value='30.701135' estimate="false"/></distr></prior>
 
 ]]>
             <connect srcID='CoalescentExponential.t:$(n)' targetID='prior' inputName='distribution'
@@ -889,7 +889,7 @@
                 <distr id="popPriorDist.EBSP" mean="@populationMean.alltrees" spec="Exponential"/>
             </prior>
 
-            <logger id="EBSPLogger" fileName='EBSP.$(seed).log' logEvery='5000'>
+            <logger id="EBSPLogger" fileName='EBSP.$(seed).log' logEvery='5000' model="@demographic.alltrees">
                 <log idref='demographic.alltrees'/>
             </logger>
             <log id='sumIndicators' spec='beast.core.util.Sum' arg='@indicators.alltrees'/>
